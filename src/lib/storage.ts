@@ -1,10 +1,12 @@
-import { type AppState, SCHEMA_VERSION, createEmptyState } from "./types";
+import { type AppState, SCHEMA_VERSION, createEmptyState, normalizeState } from "./types";
 import { seedCategories } from "./seedCategories";
 
 const STORAGE_KEY = "lifesavingsstep:state";
 
 /** Minimal shape check — not a full schema validator, just enough to avoid
- * crashing on a corrupted or foreign localStorage value. */
+ * crashing on a corrupted or foreign localStorage value. Deliberately does
+ * NOT require every current field (e.g. incomeSources) — normalizeState()
+ * backfills those, so data saved by an older schema version isn't discarded. */
 function isAppState(value: unknown): value is AppState {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
@@ -30,7 +32,7 @@ export function loadState(): AppState {
       console.warn("[storage] Stored state failed validation, starting fresh.");
       return defaultState();
     }
-    return migrate(parsed);
+    return normalizeState(parsed);
   } catch (err) {
     console.warn("[storage] Failed to read stored state, starting fresh.", err);
     return defaultState();
@@ -52,12 +54,6 @@ export function defaultState(): AppState {
     profile: null,
     categories: seedCategories(),
     events: [],
+    incomeSources: [],
   };
-}
-
-/** Placeholder for future schema migrations — bump SCHEMA_VERSION and add a
- * case here when AppState's shape changes. */
-function migrate(state: AppState): AppState {
-  if (state.schemaVersion === SCHEMA_VERSION) return state;
-  return { ...state, schemaVersion: SCHEMA_VERSION };
 }

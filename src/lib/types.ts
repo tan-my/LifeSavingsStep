@@ -53,13 +53,27 @@ export interface UserProfile {
   createdAt: string; // ISO timestamp
 }
 
-export const SCHEMA_VERSION = 1;
+export type IncomeRateUnit = "monthly" | "hourly";
+
+export interface IncomeSource {
+  id: string;
+  name: string;
+  rateUnit: IncomeRateUnit;
+  /** RM per month if rateUnit is "monthly", RM per hour if "hourly". */
+  amount: number;
+  /** Only meaningful when rateUnit is "hourly" — used to derive a monthly equivalent. */
+  hoursPerWeek?: number;
+  notes?: string;
+}
+
+export const SCHEMA_VERSION = 2;
 
 export interface AppState {
   schemaVersion: number;
   profile: UserProfile | null;
   categories: Category[];
   events: CustomEvent[];
+  incomeSources: IncomeSource[];
 }
 
 export function createEmptyState(): AppState {
@@ -68,5 +82,24 @@ export function createEmptyState(): AppState {
     profile: null,
     categories: [],
     events: [],
+    incomeSources: [],
   };
+}
+
+/**
+ * Brings a parsed AppState (from localStorage or an imported backup file) up
+ * to the current shape. State saved before `incomeSources` existed (schema
+ * v1) won't have that field at runtime even though the type says it's
+ * required — this backfills it rather than crashing or discarding the rest
+ * of the user's data.
+ */
+export function normalizeState(raw: AppState): AppState {
+  let state = raw;
+  if (!Array.isArray((state as { incomeSources?: unknown }).incomeSources)) {
+    state = { ...state, incomeSources: [] };
+  }
+  if (state.schemaVersion !== SCHEMA_VERSION) {
+    state = { ...state, schemaVersion: SCHEMA_VERSION };
+  }
+  return state;
 }

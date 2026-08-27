@@ -7,7 +7,7 @@ import FirstRunSetup from "@/components/FirstRunSetup";
 import TimelineChart from "@/components/TimelineChart";
 import YearDetailModal from "@/components/YearDetailModal";
 import StatTile from "@/components/StatTile";
-import { computeTimeline } from "@/lib/calculations";
+import { computeTimeline, totalMonthlyIncome } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
 import { exportStateToFile, importStateFromFile, ImportError } from "@/lib/exportImport";
 
@@ -36,6 +36,7 @@ export default function Home() {
   const lastYear = timeline[timeline.length - 1];
   const selectedYearPlan = timeline.find((y) => y.year === selectedYear) ?? null;
   const peakYear = timeline.reduce((a, b) => (b.totalForYear > a.totalForYear ? b : a));
+  const monthlyIncome = totalMonthlyIncome(state);
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -73,6 +74,12 @@ export default function Home() {
           >
             Life events
           </Link>
+          <Link
+            href="/income"
+            className="cursor-pointer rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-card-foreground transition-colors hover:bg-muted"
+          >
+            Income
+          </Link>
           <button
             onClick={() => exportStateToFile(state)}
             className="cursor-pointer rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-card-foreground transition-colors hover:bg-muted"
@@ -99,13 +106,14 @@ export default function Home() {
       )}
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-2 border-b border-border px-4 py-2.5 sm:grid-cols-4 sm:px-6">
+      <div className="grid grid-cols-2 gap-2 border-b border-border px-4 py-2.5 sm:grid-cols-3 sm:px-6 lg:grid-cols-5">
         <StatTile label="This year" value={formatCurrency(thisYear.totalForYear)} />
         <StatTile
           label="Peak year"
           value={formatCurrency(peakYear.totalForYear)}
           sublabel={`${peakYear.year} (age ${peakYear.age})`}
         />
+        <StatTile label="Monthly income" value={formatCurrency(monthlyIncome)} />
         <StatTile label="Categories" value={String(state.categories.length)} />
         <StatTile label="Life events" value={String(state.events.length)} />
       </div>

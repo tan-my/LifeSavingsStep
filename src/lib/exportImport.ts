@@ -1,4 +1,4 @@
-import { type AppState } from "./types";
+import { type AppState, normalizeState } from "./types";
 
 /** Triggers a browser download of the current state as a dated JSON file. */
 export function exportStateToFile(state: AppState): void {
@@ -47,5 +47,5 @@ export async function importStateFromFile(file: File): Promise<AppState> {
     throw new ImportError("That file doesn't look like a LifeSavingsStep backup.");
   }
 
-  return parsed as AppState;
+  return normalizeState(parsed as AppState);
 }

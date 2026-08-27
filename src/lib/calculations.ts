@@ -1,4 +1,20 @@
-import type { AppState, Category, CustomEvent, CategoryGroup } from "./types";
+import type { AppState, Category, CustomEvent, CategoryGroup, IncomeSource } from "./types";
+
+const WEEKS_PER_MONTH = 52 / 12;
+
+/** An income source's monthly equivalent — the amount as-is if already
+ * monthly, or hourly rate × hours/week × (52/12) if hourly. An hourly
+ * source with no hoursPerWeek set contributes 0 (never assumes a work
+ * schedule the user didn't enter). */
+export function monthlyIncomeAmount(source: IncomeSource): number {
+  if (source.rateUnit === "monthly") return source.amount;
+  return source.amount * (source.hoursPerWeek ?? 0) * WEEKS_PER_MONTH;
+}
+
+/** Total monthly income across every source. */
+export function totalMonthlyIncome(state: AppState): number {
+  return state.incomeSources.reduce((sum, s) => sum + monthlyIncomeAmount(s), 0);
+}
 
 export interface CategoryYearAmount {
   categoryId: string;
