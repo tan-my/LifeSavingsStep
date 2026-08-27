@@ -11,8 +11,8 @@ shift the numbers.
 
 | | |
 |---|---|
-| **Stage** | 📝 Planning — decisions locked in, no code written yet |
-| **Repo** | Not yet created |
+| **Stage** | 🛠️ Scaffolded — Next.js app running locally, no features built yet |
+| **Repo** | [github.com/tan-my/LifeSavingsStep](https://github.com/tan-my/LifeSavingsStep) (public) |
 | **Deploy** | Not yet deployed |
 | **Stack** | Next.js + TypeScript → Vercel |
 | **Storage** | Local-only (localStorage), export/import for backup |
@@ -64,7 +64,9 @@ status.*
 
 ### Build progress
 
-- [ ] 1. Scaffold Next.js + TypeScript project, GitHub repo, Vercel deploy
+- [x] 1a. Scaffold Next.js + TypeScript project (local git initialized, Clean Executive Enterprise design system applied)
+- [x] 1b. Create GitHub repo, push
+- [ ] 1c. Connect Vercel deploy
 - [ ] 2. Data model (categories, custom events, first-run birth year/age) + localStorage persistence + export/import
 - [ ] 3. Yearly timeline view + year-detail drill-down
 - [ ] 4. Category management UI
