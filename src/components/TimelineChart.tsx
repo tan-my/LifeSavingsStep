@@ -11,8 +11,8 @@ interface TimelineChartProps {
 }
 
 const VIEW_WIDTH = 960;
-const VIEW_HEIGHT = 320;
-const PADDING = { top: 16, right: 16, bottom: 32, left: 72 };
+const VIEW_HEIGHT = 220;
+const PADDING = { top: 12, right: 16, bottom: 24, left: 68 };
 const INNER_WIDTH = VIEW_WIDTH - PADDING.left - PADDING.right;
 const INNER_HEIGHT = VIEW_HEIGHT - PADDING.top - PADDING.bottom;
 
@@ -94,7 +94,7 @@ export default function TimelineChart({ years, onSelectYear }: TimelineChartProp
     : 0;
 
   return (
-    <div className="relative rounded-xl border border-border bg-card p-4 shadow-md">
+    <div className="relative rounded-lg border border-border bg-card p-3 shadow-sm">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
@@ -136,7 +136,7 @@ export default function TimelineChart({ years, onSelectYear }: TimelineChartProp
             <text
               key={y.year}
               x={xAt(i)}
-              y={VIEW_HEIGHT - PADDING.bottom + 20}
+              y={VIEW_HEIGHT - PADDING.bottom + 16}
               textAnchor="middle"
               className="fill-muted-foreground text-[11px]"
             >
