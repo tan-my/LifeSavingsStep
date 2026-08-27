@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useAppState } from "@/hooks/useAppState";
 import FirstRunSetup from "@/components/FirstRunSetup";
 import TimelineChart from "@/components/TimelineChart";
@@ -60,6 +61,12 @@ export default function Home() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/categories"
+            className="cursor-pointer rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-card-foreground transition-colors hover:bg-muted"
+          >
+            Categories
+          </Link>
           <button
             onClick={() => exportStateToFile(state)}
             className="cursor-pointer rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-card-foreground transition-colors hover:bg-muted"

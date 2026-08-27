@@ -24,7 +24,7 @@ export interface YearPlan {
 }
 
 /** Annualized cost of a category before growth is applied. */
-function annualBaseAmount(category: Category): number {
+export function annualBaseAmount(category: Category): number {
   return category.amountUnit === "monthly"
     ? category.baseAmount * 12
     : category.baseAmount;
