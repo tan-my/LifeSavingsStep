@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — LifeSavingsStep
+ * Source of truth: design-system/lifesavingsstep/MASTER.md
+ * Aesthetic: Clean Executive Enterprise (navy + muted gold, light mode)
+ */
+:root {
+  /* Core palette */
+  --color-primary: #0f172a;
+  --color-on-primary: #ffffff;
+  --color-secondary: #1e3a8a;
+  --color-on-secondary: #ffffff;
+  --color-accent: #a16207; /* milestones / premium touches only — not default CTA */
+  --color-on-accent: #ffffff;
+  --color-background: #f8fafc;
+  --color-foreground: #020617;
+  --color-card: #ffffff;
+  --color-card-foreground: #020617;
+  --color-muted: #e8ecf1;
+  --color-muted-foreground: #475569;
+  --color-border: #e2e8f0;
+
+  /* Semantic (financial deltas) */
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
+  --color-destructive: #dc2626;
+  --color-on-destructive: #ffffff;
+  --color-ring: #0f172a;
+
+  /* Spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* Shadow depths */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-on-primary: var(--color-on-primary);
+  --color-secondary: var(--color-secondary);
+  --color-on-secondary: var(--color-on-secondary);
+  --color-accent: var(--color-accent);
+  --color-on-accent: var(--color-on-accent);
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-border: var(--color-border);
+  --color-success: var(--color-success);
+  --color-danger: var(--color-danger);
+  --color-destructive: var(--color-destructive);
+  --color-on-destructive: var(--color-on-destructive);
+  --color-ring: var(--color-ring);
+
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+}
+
+/* Clean Executive Enterprise is a light-mode-only aesthetic by design — no
+   prefers-color-scheme override. Revisit if a dark mode is explicitly wanted
+   later (the "Editorial Bold/Dark" direction from the design pitch fits that
+   need better than retrofitting this palette). */
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+}
