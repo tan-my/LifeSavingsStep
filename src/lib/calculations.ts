@@ -11,18 +11,50 @@ export function monthlyIncomeAmount(source: IncomeSource): number {
   return source.amount * (source.hoursPerWeek ?? 0) * WEEKS_PER_MONTH;
 }
 
-/** Whether an income source is active in a given year — from its startYear
- * through its endYear (inclusive), or indefinitely if endYear is omitted. */
-export function isIncomeActiveInYear(source: IncomeSource, year: number): boolean {
-  const started = year >= source.startYear;
-  const notEnded = source.endYear === undefined || year <= source.endYear;
-  return started && notEnded;
+function toAbsoluteMonth(year: number, month: number): number {
+  return year * 12 + (month - 1);
 }
 
-/** Total monthly income from sources active in `year`. */
-export function totalMonthlyIncome(state: AppState, year: number): number {
+/** An income source's [start, end] as absolute month indices — end is
+ * +Infinity when the source has no endYear (runs indefinitely). */
+function activeMonthRange(source: IncomeSource): [number, number] {
+  const start = toAbsoluteMonth(source.startYear, source.startMonth);
+  const end =
+    source.endYear !== undefined
+      ? toAbsoluteMonth(source.endYear, source.endMonth ?? 12)
+      : Infinity;
+  return [start, end];
+}
+
+/** Whether an income source is active in a specific calendar month. */
+export function isIncomeActiveInMonth(source: IncomeSource, year: number, month: number): boolean {
+  const [start, end] = activeMonthRange(source);
+  const target = toAbsoluteMonth(year, month);
+  return target >= start && target <= end;
+}
+
+/** How many months of `year` this income source is active for (0-12) — a
+ * source that only covers part of the year (e.g. a 4-month contract) is
+ * prorated rather than counted as a full year. */
+export function monthsActiveInYear(source: IncomeSource, year: number): number {
+  const [start, end] = activeMonthRange(source);
+  const yearStart = toAbsoluteMonth(year, 1);
+  const yearEnd = toAbsoluteMonth(year, 12);
+  const overlapStart = Math.max(start, yearStart);
+  const overlapEnd = Math.min(end, yearEnd);
+  return Math.max(0, overlapEnd - overlapStart + 1);
+}
+
+/** This income source's contribution to `year`'s total, prorated by month. */
+export function incomeAmountInYear(source: IncomeSource, year: number): number {
+  return monthlyIncomeAmount(source) * monthsActiveInYear(source, year);
+}
+
+/** Total monthly income from sources active in a specific calendar month —
+ * "what am I earning right now", not an annual/prorated figure. */
+export function totalMonthlyIncome(state: AppState, year: number, month: number): number {
   return state.incomeSources
-    .filter((s) => isIncomeActiveInYear(s, year))
+    .filter((s) => isIncomeActiveInMonth(s, year, month))
     .reduce((sum, s) => sum + monthlyIncomeAmount(s), 0);
 }
 
@@ -48,8 +80,9 @@ export interface YearPlan {
   eventTotal: number;
   /** Money needed this year — categoryTotal + eventTotal. */
   totalForYear: number;
-  /** Income for this year — only sources whose start/end period covers this
-   * year, at their current rate (no growth modeled, e.g. no raises). */
+  /** Income for this year — each source's monthly rate × the months of this
+   * year it was active for (prorated for a source that starts/ends mid-year),
+   * at its current rate (no growth modeled, e.g. no raises). */
   incomeForYear: number;
   /** incomeForYear − totalForYear. Positive = savings grew this year. */
   netForYear: number;
@@ -123,7 +156,7 @@ export function computeTimeline(
     const eventTotal = sum(eventAmounts.map((e) => e.amount));
 
     const totalForYear = categoryTotal + eventTotal;
-    const incomeForYear = totalMonthlyIncome(state, year) * 12;
+    const incomeForYear = sum(state.incomeSources.map((s) => incomeAmountInYear(s, year)));
     const netForYear = incomeForYear - totalForYear;
     balance += netForYear;
 

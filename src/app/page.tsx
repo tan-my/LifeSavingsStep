@@ -13,6 +13,7 @@ import { formatCurrency } from "@/lib/format";
 import { exportStateToFile, importStateFromFile, ImportError } from "@/lib/exportImport";
 
 const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_MONTH = new Date().getMonth() + 1;
 
 export default function Home() {
   const { state, setState, isLoaded } = useAppState();
@@ -39,7 +40,7 @@ export default function Home() {
   const lastYear = timeline[timeline.length - 1];
   const selectedYearPlan = timeline.find((y) => y.year === selectedYear) ?? null;
   const peakYear = timeline.reduce((a, b) => (b.totalForYear > a.totalForYear ? b : a));
-  const monthlyIncome = totalMonthlyIncome(state, CURRENT_YEAR);
+  const monthlyIncome = totalMonthlyIncome(state, CURRENT_YEAR, CURRENT_MONTH);
   const runwayYear = findRunwayEndYear(timeline);
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {

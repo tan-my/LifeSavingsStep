@@ -65,10 +65,15 @@ export interface IncomeSource {
   amount: number;
   /** Only meaningful when rateUnit is "hourly" — used to derive a monthly equivalent. */
   hoursPerWeek?: number;
-  /** Year this income starts (e.g. when the job starts/started). */
+  /** Year+month this income starts (e.g. when the job starts/started). Month is 1-12. */
   startYear: number;
-  /** Last year this income applies — omitted means it runs to the end of the timeline. */
+  startMonth: number;
+  /** Last year+month this income applies (inclusive) — endYear omitted means it
+   * runs to the end of the timeline. A source active for only part of a
+   * calendar year (e.g. a 4-month contract) is prorated by month, not
+   * counted as a full year. */
   endYear?: number;
+  endMonth?: number;
   notes?: string;
 }
 
@@ -77,7 +82,7 @@ export interface IncomeSource {
  * so an arbitrarily early year preserves that rather than guessing "now". */
 const EARLIEST_PLAUSIBLE_YEAR = 1900;
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export interface AppState {
   schemaVersion: number;
@@ -114,14 +119,28 @@ export function normalizeState(raw: AppState): AppState {
   ) {
     state = { ...state, profile: { ...state.profile, currentSavings: 0 } };
   }
-  if (state.incomeSources.some((s) => typeof (s as { startYear?: unknown }).startYear !== "number")) {
+  type LegacyIncomeSource = { startYear?: unknown; startMonth?: unknown; endYear?: unknown; endMonth?: unknown };
+  if (
+    state.incomeSources.some((raw) => {
+      const s = raw as LegacyIncomeSource;
+      return (
+        typeof s.startYear !== "number" ||
+        typeof s.startMonth !== "number" ||
+        (s.endYear !== undefined && typeof s.endMonth !== "number")
+      );
+    })
+  ) {
     state = {
       ...state,
-      incomeSources: state.incomeSources.map((s) =>
-        typeof (s as { startYear?: unknown }).startYear === "number"
-          ? s
-          : { ...s, startYear: EARLIEST_PLAUSIBLE_YEAR },
-      ),
+      incomeSources: state.incomeSources.map((raw) => {
+        const s = raw as IncomeSource & LegacyIncomeSource;
+        return {
+          ...s,
+          startYear: typeof s.startYear === "number" ? s.startYear : EARLIEST_PLAUSIBLE_YEAR,
+          startMonth: typeof s.startMonth === "number" ? s.startMonth : 1,
+          endMonth: s.endYear !== undefined ? (typeof s.endMonth === "number" ? s.endMonth : 12) : undefined,
+        };
+      }),
     };
   }
   if (state.schemaVersion !== SCHEMA_VERSION) {

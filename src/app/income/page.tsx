@@ -5,15 +5,29 @@ import Link from "next/link";
 import { useAppState } from "@/hooks/useAppState";
 import IncomeFormModal from "@/components/IncomeFormModal";
 import type { IncomeSource } from "@/lib/types";
-import { isIncomeActiveInYear, monthlyIncomeAmount, totalMonthlyIncome } from "@/lib/calculations";
+import { isIncomeActiveInMonth, monthlyIncomeAmount, totalMonthlyIncome } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
 
 const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_MONTH = new Date().getMonth() + 1;
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 
 function describeSpan(source: IncomeSource): string {
-  return source.endYear !== undefined
-    ? `${source.startYear} – ${source.endYear}`
-    : `${source.startYear} – ongoing`;
+  const start = `${MONTH_ABBR[source.startMonth - 1]} ${source.startYear}`;
+  const end =
+    source.endYear !== undefined
+      ? `${MONTH_ABBR[(source.endMonth ?? 12) - 1]} ${source.endYear}`
+      : "ongoing";
+  return `${start} – ${end}`;
+}
+
+function isUpcoming(source: IncomeSource): boolean {
+  return (
+    source.startYear > CURRENT_YEAR ||
+    (source.startYear === CURRENT_YEAR && source.startMonth > CURRENT_MONTH)
+  );
 }
 
 export default function IncomePage() {
@@ -57,7 +71,7 @@ export default function IncomePage() {
 
   const editingSource = editing === "new" ? undefined : editing ?? undefined;
   const showForm = editing !== null;
-  const total = totalMonthlyIncome(state, CURRENT_YEAR);
+  const total = totalMonthlyIncome(state, CURRENT_YEAR, CURRENT_MONTH);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -109,7 +123,7 @@ export default function IncomePage() {
             <div className="rounded-lg border border-border bg-card shadow-sm">
               <div className="divide-y divide-border">
                 {state.incomeSources.map((source) => {
-                  const active = isIncomeActiveInYear(source, CURRENT_YEAR);
+                  const active = isIncomeActiveInMonth(source, CURRENT_YEAR, CURRENT_MONTH);
                   return (
                     <div
                       key={source.id}
@@ -120,7 +134,7 @@ export default function IncomePage() {
                           {source.name}
                           {!active && (
                             <span className="ml-2 text-xs font-normal text-muted-foreground">
-                              ({source.startYear > CURRENT_YEAR ? "upcoming" : "ended"})
+                              ({isUpcoming(source) ? "upcoming" : "ended"})
                             </span>
                           )}
                         </p>
@@ -185,6 +199,7 @@ export default function IncomePage() {
         <IncomeFormModal
           source={editingSource}
           currentYear={CURRENT_YEAR}
+          currentMonth={CURRENT_MONTH}
           onSave={handleSave}
           onClose={() => setEditing(null)}
         />

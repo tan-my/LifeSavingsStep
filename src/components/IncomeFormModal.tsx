@@ -7,13 +7,30 @@ interface IncomeFormModalProps {
   /** Omit to create a new income source; pass an existing one to edit it. */
   source?: IncomeSource;
   currentYear: number;
+  currentMonth: number;
   onSave: (source: IncomeSource) => void;
   onClose: () => void;
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** "YYYY-MM" <-> {year, month}, the format <input type="month"> uses. */
+function toMonthValue(year: number, month: number): string {
+  return `${year}-${pad2(month)}`;
+}
+
+function parseMonthValue(value: string): { year: number; month: number } | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  return { year: Number(match[1]), month: Number(match[2]) };
 }
 
 export default function IncomeFormModal({
   source,
   currentYear,
+  currentMonth,
   onSave,
   onClose,
 }: IncomeFormModalProps) {
@@ -23,8 +40,12 @@ export default function IncomeFormModal({
   const [hoursPerWeek, setHoursPerWeek] = useState(
     source?.hoursPerWeek !== undefined ? String(source.hoursPerWeek) : "",
   );
-  const [startYear, setStartYear] = useState(String(source?.startYear ?? currentYear));
-  const [endYear, setEndYear] = useState(source?.endYear !== undefined ? String(source.endYear) : "");
+  const [startMonthValue, setStartMonthValue] = useState(
+    toMonthValue(source?.startYear ?? currentYear, source?.startMonth ?? currentMonth),
+  );
+  const [endMonthValue, setEndMonthValue] = useState(
+    source?.endYear !== undefined ? toMonthValue(source.endYear, source.endMonth ?? 12) : "",
+  );
   const [notes, setNotes] = useState(source?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
 
@@ -56,20 +77,20 @@ export default function IncomeFormModal({
         return;
       }
     }
-    const start = Number(startYear);
-    if (!Number.isInteger(start)) {
-      setError("Start year must be a whole number.");
+    const start = parseMonthValue(startMonthValue);
+    if (!start) {
+      setError("Enter a start month.");
       return;
     }
-    let end: number | undefined;
-    if (endYear.trim() !== "") {
-      end = Number(endYear);
-      if (!Number.isInteger(end)) {
-        setError("End year must be a whole number.");
+    let end: { year: number; month: number } | null = null;
+    if (endMonthValue.trim() !== "") {
+      end = parseMonthValue(endMonthValue);
+      if (!end) {
+        setError("Enter a valid end month.");
         return;
       }
-      if (end < start) {
-        setError("End year can't be before the start year.");
+      if (end.year * 12 + end.month < start.year * 12 + start.month) {
+        setError("End month can't be before the start month.");
         return;
       }
     }
@@ -80,8 +101,10 @@ export default function IncomeFormModal({
       rateUnit,
       amount: amt,
       hoursPerWeek: rateUnit === "hourly" ? hours : undefined,
-      startYear: start,
-      endYear: end,
+      startYear: start.year,
+      startMonth: start.month,
+      endYear: end?.year,
+      endMonth: end?.month,
       notes: notes.trim() || undefined,
     });
   }
@@ -192,10 +215,9 @@ export default function IncomeFormModal({
             <input
               id="inc-start"
               className={inputClass}
-              type="number"
-              inputMode="numeric"
-              value={startYear}
-              onChange={(e) => setStartYear(e.target.value)}
+              type="month"
+              value={startMonthValue}
+              onChange={(e) => setStartMonthValue(e.target.value)}
             />
           </div>
           <div>
@@ -205,17 +227,16 @@ export default function IncomeFormModal({
             <input
               id="inc-end"
               className={inputClass}
-              type="number"
-              inputMode="numeric"
-              value={endYear}
-              onChange={(e) => setEndYear(e.target.value)}
-              placeholder="Ongoing"
+              type="month"
+              value={endMonthValue}
+              onChange={(e) => setEndMonthValue(e.target.value)}
             />
           </div>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          The period this income applies — e.g. a job&apos;s start date, or a
-          contract&apos;s length. Leave &quot;Ends&quot; blank if it&apos;s ongoing.
+          The month this income starts and (optionally) ends — a short
+          contract can be a few months, not a whole year. Leave
+          &quot;Ends&quot; blank if it&apos;s ongoing.
         </p>
 
         <label className={`mt-4 block ${labelClass}`} htmlFor="inc-notes">
