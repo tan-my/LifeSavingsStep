@@ -65,10 +65,19 @@ export interface IncomeSource {
   amount: number;
   /** Only meaningful when rateUnit is "hourly" — used to derive a monthly equivalent. */
   hoursPerWeek?: number;
+  /** Year this income starts (e.g. when the job starts/started). */
+  startYear: number;
+  /** Last year this income applies — omitted means it runs to the end of the timeline. */
+  endYear?: number;
   notes?: string;
 }
 
-export const SCHEMA_VERSION = 3;
+/** Sentinel used only by normalizeState() to backfill startYear on income
+ * sources saved before periods existed — old behavior was "always active",
+ * so an arbitrarily early year preserves that rather than guessing "now". */
+const EARLIEST_PLAUSIBLE_YEAR = 1900;
+
+export const SCHEMA_VERSION = 4;
 
 export interface AppState {
   schemaVersion: number;
@@ -104,6 +113,16 @@ export function normalizeState(raw: AppState): AppState {
     typeof (state.profile as { currentSavings?: unknown }).currentSavings !== "number"
   ) {
     state = { ...state, profile: { ...state.profile, currentSavings: 0 } };
+  }
+  if (state.incomeSources.some((s) => typeof (s as { startYear?: unknown }).startYear !== "number")) {
+    state = {
+      ...state,
+      incomeSources: state.incomeSources.map((s) =>
+        typeof (s as { startYear?: unknown }).startYear === "number"
+          ? s
+          : { ...s, startYear: EARLIEST_PLAUSIBLE_YEAR },
+      ),
+    };
   }
   if (state.schemaVersion !== SCHEMA_VERSION) {
     state = { ...state, schemaVersion: SCHEMA_VERSION };

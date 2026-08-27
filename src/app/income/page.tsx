@@ -5,8 +5,16 @@ import Link from "next/link";
 import { useAppState } from "@/hooks/useAppState";
 import IncomeFormModal from "@/components/IncomeFormModal";
 import type { IncomeSource } from "@/lib/types";
-import { monthlyIncomeAmount, totalMonthlyIncome } from "@/lib/calculations";
+import { isIncomeActiveInYear, monthlyIncomeAmount, totalMonthlyIncome } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
+
+const CURRENT_YEAR = new Date().getFullYear();
+
+function describeSpan(source: IncomeSource): string {
+  return source.endYear !== undefined
+    ? `${source.startYear} – ${source.endYear}`
+    : `${source.startYear} – ongoing`;
+}
 
 export default function IncomePage() {
   const { state, setState, isLoaded } = useAppState();
@@ -49,7 +57,7 @@ export default function IncomePage() {
 
   const editingSource = editing === "new" ? undefined : editing ?? undefined;
   const showForm = editing !== null;
-  const total = totalMonthlyIncome(state);
+  const total = totalMonthlyIncome(state, CURRENT_YEAR);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -74,7 +82,7 @@ export default function IncomePage() {
             <h1 className="text-base font-semibold text-foreground">Income</h1>
             <p className="text-xs text-muted-foreground">
               {state.incomeSources.length} source{state.incomeSources.length === 1 ? "" : "s"} ·{" "}
-              {formatCurrency(total)}/mo total
+              {formatCurrency(total)}/mo active now
             </p>
           </div>
         </div>
@@ -95,62 +103,74 @@ export default function IncomePage() {
             <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
               No income sources yet. Add a job, a freelance project, or any
               recurring income — each can be a monthly amount or an hourly
-              rate.
+              rate, with a start/end period.
             </p>
           ) : (
             <div className="rounded-lg border border-border bg-card shadow-sm">
               <div className="divide-y divide-border">
-                {state.incomeSources.map((source) => (
-                  <div
-                    key={source.id}
-                    className="flex items-center justify-between gap-3 px-4 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-card-foreground">{source.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {source.rateUnit === "monthly"
-                          ? `${formatCurrency(source.amount)}/mo`
-                          : `${formatCurrency(source.amount)}/hr${
-                              source.hoursPerWeek !== undefined
-                                ? ` · ${source.hoursPerWeek} hrs/wk ≈ ${formatCurrency(
-                                    monthlyIncomeAmount(source),
-                                  )}/mo`
-                                : " · add hours/week to include in total"
-                            }`}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <button
-                        onClick={() => {
-                          setConfirmDeleteId(null);
-                          setEditing(source);
-                        }}
-                        className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-muted"
-                      >
-                        Edit
-                      </button>
-                      {confirmDeleteId === source.id ? (
+                {state.incomeSources.map((source) => {
+                  const active = isIncomeActiveInYear(source, CURRENT_YEAR);
+                  return (
+                    <div
+                      key={source.id}
+                      className="flex items-center justify-between gap-3 px-4 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-card-foreground">
+                          {source.name}
+                          {!active && (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              ({source.startYear > CURRENT_YEAR ? "upcoming" : "ended"})
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {source.rateUnit === "monthly"
+                            ? `${formatCurrency(source.amount)}/mo`
+                            : `${formatCurrency(source.amount)}/hr${
+                                source.hoursPerWeek !== undefined
+                                  ? ` · ${source.hoursPerWeek} hrs/wk ≈ ${formatCurrency(
+                                      monthlyIncomeAmount(source),
+                                    )}/mo`
+                                  : " · add hours/week to include in total"
+                              }`}
+                          {" · "}
+                          {describeSpan(source)}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
                         <button
-                          onClick={() => handleDelete(source.id)}
-                          className="cursor-pointer rounded-md bg-danger px-2 py-1 text-xs font-medium text-on-destructive"
+                          onClick={() => {
+                            setConfirmDeleteId(null);
+                            setEditing(source);
+                          }}
+                          className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-muted"
                         >
-                          Confirm?
+                          Edit
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmDeleteId(source.id)}
-                          className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-danger"
-                        >
-                          Delete
-                        </button>
-                      )}
+                        {confirmDeleteId === source.id ? (
+                          <button
+                            onClick={() => handleDelete(source.id)}
+                            className="cursor-pointer rounded-md bg-danger px-2 py-1 text-xs font-medium text-on-destructive"
+                          >
+                            Confirm?
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(source.id)}
+                            className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-danger"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
                 <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  Total
+                  Active now
                 </span>
                 <span className="text-sm font-semibold text-card-foreground">
                   {formatCurrency(total)}/mo
@@ -162,7 +182,12 @@ export default function IncomePage() {
       </div>
 
       {showForm && (
-        <IncomeFormModal source={editingSource} onSave={handleSave} onClose={() => setEditing(null)} />
+        <IncomeFormModal
+          source={editingSource}
+          currentYear={CURRENT_YEAR}
+          onSave={handleSave}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   );

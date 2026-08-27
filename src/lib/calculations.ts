@@ -11,9 +11,19 @@ export function monthlyIncomeAmount(source: IncomeSource): number {
   return source.amount * (source.hoursPerWeek ?? 0) * WEEKS_PER_MONTH;
 }
 
-/** Total monthly income across every source. */
-export function totalMonthlyIncome(state: AppState): number {
-  return state.incomeSources.reduce((sum, s) => sum + monthlyIncomeAmount(s), 0);
+/** Whether an income source is active in a given year — from its startYear
+ * through its endYear (inclusive), or indefinitely if endYear is omitted. */
+export function isIncomeActiveInYear(source: IncomeSource, year: number): boolean {
+  const started = year >= source.startYear;
+  const notEnded = source.endYear === undefined || year <= source.endYear;
+  return started && notEnded;
+}
+
+/** Total monthly income from sources active in `year`. */
+export function totalMonthlyIncome(state: AppState, year: number): number {
+  return state.incomeSources
+    .filter((s) => isIncomeActiveInYear(s, year))
+    .reduce((sum, s) => sum + monthlyIncomeAmount(s), 0);
 }
 
 export interface CategoryYearAmount {
@@ -38,9 +48,8 @@ export interface YearPlan {
   eventTotal: number;
   /** Money needed this year — categoryTotal + eventTotal. */
   totalForYear: number;
-  /** Income for this year. Income sources have no growth/start/end concept
-   * yet, so this is flat (current monthly income × 12) across every year —
-   * a known simplification, not a real income projection. */
+  /** Income for this year — only sources whose start/end period covers this
+   * year, at their current rate (no growth modeled, e.g. no raises). */
   incomeForYear: number;
   /** incomeForYear − totalForYear. Positive = savings grew this year. */
   netForYear: number;
@@ -92,7 +101,6 @@ export function computeTimeline(
   if (!profile) return [];
 
   const endYear = profile.birthYear + endAge;
-  const annualIncome = totalMonthlyIncome(state) * 12;
   const plans: YearPlan[] = [];
   let balance = profile.currentSavings;
 
@@ -115,7 +123,8 @@ export function computeTimeline(
     const eventTotal = sum(eventAmounts.map((e) => e.amount));
 
     const totalForYear = categoryTotal + eventTotal;
-    const netForYear = annualIncome - totalForYear;
+    const incomeForYear = totalMonthlyIncome(state, year) * 12;
+    const netForYear = incomeForYear - totalForYear;
     balance += netForYear;
 
     plans.push({
@@ -126,7 +135,7 @@ export function computeTimeline(
       eventAmounts,
       eventTotal,
       totalForYear,
-      incomeForYear: annualIncome,
+      incomeForYear,
       netForYear,
       balance,
     });

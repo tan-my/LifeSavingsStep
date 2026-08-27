@@ -39,7 +39,7 @@ export default function Home() {
   const lastYear = timeline[timeline.length - 1];
   const selectedYearPlan = timeline.find((y) => y.year === selectedYear) ?? null;
   const peakYear = timeline.reduce((a, b) => (b.totalForYear > a.totalForYear ? b : a));
-  const monthlyIncome = totalMonthlyIncome(state);
+  const monthlyIncome = totalMonthlyIncome(state, CURRENT_YEAR);
   const runwayYear = findRunwayEndYear(timeline);
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
