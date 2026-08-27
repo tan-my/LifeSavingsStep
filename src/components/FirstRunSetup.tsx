@@ -18,6 +18,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 export default function FirstRunSetup({ onComplete, baseState }: FirstRunSetupProps) {
   const [mode, setMode] = useState<"age" | "year">("age");
   const [value, setValue] = useState("");
+  const [savings, setSavings] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: FormEvent) {
@@ -44,12 +45,22 @@ export default function FirstRunSetup({ onComplete, baseState }: FirstRunSetupPr
       birthYear = n;
     }
 
+    let currentSavings = 0;
+    if (savings.trim() !== "") {
+      currentSavings = Number(savings);
+      if (!Number.isFinite(currentSavings)) {
+        setError("Current savings must be a number.");
+        return;
+      }
+    }
+
     onComplete({
       ...baseState,
       profile: {
         birthYear,
         currency: "MYR",
         createdAt: new Date().toISOString(),
+        currentSavings,
       },
     });
   }
@@ -108,6 +119,25 @@ export default function FirstRunSetup({ onComplete, baseState }: FirstRunSetupPr
           placeholder={mode === "age" ? "e.g. 30" : `e.g. ${CURRENT_YEAR - 30}`}
           className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
         />
+        <label className="mt-4 block text-sm font-medium text-card-foreground" htmlFor="savings">
+          Current savings (RM, optional)
+        </label>
+        <input
+          id="savings"
+          type="number"
+          step="0.01"
+          inputMode="decimal"
+          value={savings}
+          onChange={(e) => {
+            setSavings(e.target.value);
+            setError(null);
+          }}
+          placeholder="0"
+          className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Your timeline&apos;s starting balance. You can change this anytime later.
+        </p>
         {error && <p className="mt-2 text-sm text-danger">{error}</p>}
 
         <button

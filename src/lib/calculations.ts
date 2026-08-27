@@ -36,7 +36,17 @@ export interface YearPlan {
   categoryTotal: number;
   eventAmounts: EventYearAmount[];
   eventTotal: number;
+  /** Money needed this year — categoryTotal + eventTotal. */
   totalForYear: number;
+  /** Income for this year. Income sources have no growth/start/end concept
+   * yet, so this is flat (current monthly income × 12) across every year —
+   * a known simplification, not a real income projection. */
+  incomeForYear: number;
+  /** incomeForYear − totalForYear. Positive = savings grew this year. */
+  netForYear: number;
+  /** Running savings balance at the END of this year — currentSavings plus
+   * every year's netForYear up to and including this one. */
+  balance: number;
 }
 
 /** Annualized cost of a category before growth is applied. */
@@ -82,7 +92,9 @@ export function computeTimeline(
   if (!profile) return [];
 
   const endYear = profile.birthYear + endAge;
+  const annualIncome = totalMonthlyIncome(state) * 12;
   const plans: YearPlan[] = [];
+  let balance = profile.currentSavings;
 
   for (let year = fromYear; year <= endYear; year++) {
     const categoryAmounts = categories.map((category) => ({
@@ -102,6 +114,10 @@ export function computeTimeline(
       .filter((e) => e.amount !== 0);
     const eventTotal = sum(eventAmounts.map((e) => e.amount));
 
+    const totalForYear = categoryTotal + eventTotal;
+    const netForYear = annualIncome - totalForYear;
+    balance += netForYear;
+
     plans.push({
       year,
       age: year - profile.birthYear,
@@ -109,11 +125,20 @@ export function computeTimeline(
       categoryTotal,
       eventAmounts,
       eventTotal,
-      totalForYear: categoryTotal + eventTotal,
+      totalForYear,
+      incomeForYear: annualIncome,
+      netForYear,
+      balance,
     });
   }
 
   return plans;
+}
+
+/** The first year the running balance goes negative, or null if it stays
+ * non-negative for the whole computed timeline. */
+export function findRunwayEndYear(timeline: YearPlan[]): YearPlan | null {
+  return timeline.find((y) => y.balance < 0) ?? null;
 }
 
 function sum(values: number[]): number {

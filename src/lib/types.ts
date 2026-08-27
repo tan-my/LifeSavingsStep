@@ -51,6 +51,8 @@ export interface UserProfile {
   birthYear: number;
   currency: "MYR";
   createdAt: string; // ISO timestamp
+  /** Current total savings/net worth, as of now. The timeline's starting balance. */
+  currentSavings: number;
 }
 
 export type IncomeRateUnit = "monthly" | "hourly";
@@ -66,7 +68,7 @@ export interface IncomeSource {
   notes?: string;
 }
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface AppState {
   schemaVersion: number;
@@ -88,15 +90,20 @@ export function createEmptyState(): AppState {
 
 /**
  * Brings a parsed AppState (from localStorage or an imported backup file) up
- * to the current shape. State saved before `incomeSources` existed (schema
- * v1) won't have that field at runtime even though the type says it's
- * required — this backfills it rather than crashing or discarding the rest
- * of the user's data.
+ * to the current shape. State saved before a field existed won't have it at
+ * runtime even though the type says it's required — this backfills rather
+ * than crashing or discarding the rest of the user's data.
  */
 export function normalizeState(raw: AppState): AppState {
   let state = raw;
   if (!Array.isArray((state as { incomeSources?: unknown }).incomeSources)) {
     state = { ...state, incomeSources: [] };
+  }
+  if (
+    state.profile !== null &&
+    typeof (state.profile as { currentSavings?: unknown }).currentSavings !== "number"
+  ) {
+    state = { ...state, profile: { ...state.profile, currentSavings: 0 } };
   }
   if (state.schemaVersion !== SCHEMA_VERSION) {
     state = { ...state, schemaVersion: SCHEMA_VERSION };

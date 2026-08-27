@@ -6,8 +6,9 @@ import { useAppState } from "@/hooks/useAppState";
 import FirstRunSetup from "@/components/FirstRunSetup";
 import TimelineChart from "@/components/TimelineChart";
 import YearDetailModal from "@/components/YearDetailModal";
+import SavingsFormModal from "@/components/SavingsFormModal";
 import StatTile from "@/components/StatTile";
-import { computeTimeline, totalMonthlyIncome } from "@/lib/calculations";
+import { computeTimeline, findRunwayEndYear, totalMonthlyIncome } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
 import { exportStateToFile, importStateFromFile, ImportError } from "@/lib/exportImport";
 
@@ -17,6 +18,7 @@ export default function Home() {
   const { state, setState, isLoaded } = useAppState();
   const [importError, setImportError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [editingSavings, setEditingSavings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isLoaded || !state) {
@@ -30,6 +32,7 @@ export default function Home() {
   if (!state.profile) {
     return <FirstRunSetup baseState={state} onComplete={setState} />;
   }
+  const profile = state.profile;
 
   const timeline = computeTimeline(state, CURRENT_YEAR);
   const thisYear = timeline[0];
@@ -37,6 +40,7 @@ export default function Home() {
   const selectedYearPlan = timeline.find((y) => y.year === selectedYear) ?? null;
   const peakYear = timeline.reduce((a, b) => (b.totalForYear > a.totalForYear ? b : a));
   const monthlyIncome = totalMonthlyIncome(state);
+  const runwayYear = findRunwayEndYear(timeline);
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -49,6 +53,12 @@ export default function Home() {
     } catch (err) {
       setImportError(err instanceof ImportError ? err.message : "Import failed.");
     }
+  }
+
+  function handleSaveSavings(currentSavings: number) {
+    if (!state) return;
+    setState({ ...state, profile: { ...profile, currentSavings } });
+    setEditingSavings(false);
   }
 
   return (
@@ -106,14 +116,26 @@ export default function Home() {
       )}
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-2 border-b border-border px-4 py-2.5 sm:grid-cols-3 sm:px-6 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 border-b border-border px-4 py-2.5 sm:grid-cols-4 sm:px-6 lg:grid-cols-7">
+        <StatTile
+          label="Current savings"
+          value={formatCurrency(profile.currentSavings)}
+          tone={profile.currentSavings < 0 ? "danger" : "default"}
+          onClick={() => setEditingSavings(true)}
+        />
+        <StatTile
+          label="Runway"
+          value={runwayYear ? `${runwayYear.year}` : "Never depletes"}
+          sublabel={runwayYear ? `age ${runwayYear.age}` : `through age ${lastYear.age}`}
+          tone={runwayYear ? "danger" : "success"}
+        />
+        <StatTile label="Monthly income" value={formatCurrency(monthlyIncome)} />
         <StatTile label="This year" value={formatCurrency(thisYear.totalForYear)} />
         <StatTile
           label="Peak year"
           value={formatCurrency(peakYear.totalForYear)}
           sublabel={`${peakYear.year} (age ${peakYear.age})`}
         />
-        <StatTile label="Monthly income" value={formatCurrency(monthlyIncome)} />
         <StatTile label="Categories" value={String(state.categories.length)} />
         <StatTile label="Life events" value={String(state.events.length)} />
       </div>
@@ -126,7 +148,10 @@ export default function Home() {
             <summary className="cursor-pointer select-none">About this data</summary>
             <p className="mt-1">
               Category amounts are placeholders — real data comes with the
-              category management UI (see PROJECT.md, step 4).
+              category management UI (see PROJECT.md, step 4). Income is
+              assumed flat every year (no growth modeled yet), and the
+              balance projection is a straight-line estimate, not a
+              guarantee.
             </p>
           </details>
         </div>
@@ -138,7 +163,9 @@ export default function Home() {
                 <tr className="border-b border-border text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                   <th className="px-4 py-2">Year</th>
                   <th className="px-4 py-2">Age</th>
-                  <th className="px-4 py-2 text-right">Total</th>
+                  <th className="px-4 py-2 text-right">Income</th>
+                  <th className="px-4 py-2 text-right">Needed</th>
+                  <th className="px-4 py-2 text-right">Balance</th>
                 </tr>
               </thead>
               <tbody>
@@ -163,9 +190,27 @@ export default function Home() {
                     <td className="p-0">
                       <button
                         onClick={() => setSelectedYear(y.year)}
-                        className="w-full cursor-pointer px-4 py-1.5 text-right font-medium tabular-nums text-card-foreground transition-colors hover:bg-muted"
+                        className="w-full cursor-pointer px-4 py-1.5 text-right tabular-nums text-muted-foreground transition-colors hover:bg-muted"
+                      >
+                        {formatCurrency(y.incomeForYear)}
+                      </button>
+                    </td>
+                    <td className="p-0">
+                      <button
+                        onClick={() => setSelectedYear(y.year)}
+                        className="w-full cursor-pointer px-4 py-1.5 text-right tabular-nums text-card-foreground transition-colors hover:bg-muted"
                       >
                         {formatCurrency(y.totalForYear)}
+                      </button>
+                    </td>
+                    <td className="p-0">
+                      <button
+                        onClick={() => setSelectedYear(y.year)}
+                        className={`w-full cursor-pointer px-4 py-1.5 text-right font-medium tabular-nums transition-colors hover:bg-muted ${
+                          y.balance < 0 ? "text-danger" : "text-card-foreground"
+                        }`}
+                      >
+                        {formatCurrency(y.balance)}
                       </button>
                     </td>
                   </tr>
@@ -178,6 +223,13 @@ export default function Home() {
 
       {selectedYearPlan && (
         <YearDetailModal year={selectedYearPlan} onClose={() => setSelectedYear(null)} />
+      )}
+      {editingSavings && (
+        <SavingsFormModal
+          currentSavings={profile.currentSavings}
+          onSave={handleSaveSavings}
+          onClose={() => setEditingSavings(false)}
+        />
       )}
     </div>
   );

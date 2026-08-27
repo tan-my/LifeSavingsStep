@@ -60,10 +60,30 @@ export default function YearDetailModal({ year, onClose }: YearDetailModalProps)
           </button>
         </div>
 
-        <p className="mt-4 text-3xl font-semibold text-card-foreground">
-          {formatCurrency(year.totalForYear)}
-        </p>
-        <p className="text-sm text-muted-foreground">total money needed this year</p>
+        <div className="mt-4 grid grid-cols-3 gap-3 rounded-lg border border-border bg-background p-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Balance</p>
+            <p
+              className={`mt-0.5 truncate text-lg font-semibold ${
+                year.balance < 0 ? "text-danger" : "text-success"
+              }`}
+            >
+              {formatCurrency(year.balance)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Income</p>
+            <p className="mt-0.5 truncate text-lg font-semibold text-card-foreground">
+              {formatCurrency(year.incomeForYear)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Needed</p>
+            <p className="mt-0.5 truncate text-lg font-semibold text-card-foreground">
+              {formatCurrency(year.totalForYear)}
+            </p>
+          </div>
+        </div>
 
         {groups.length > 0 && (
           <div className="mt-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import type { YearPlan } from "@/lib/calculations";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/format";
 import { niceTicks } from "@/lib/niceScale";
@@ -12,31 +12,37 @@ interface TimelineChartProps {
 
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 220;
-const PADDING = { top: 12, right: 16, bottom: 24, left: 68 };
+const PADDING = { top: 12, right: 16, bottom: 24, left: 72 };
 const INNER_WIDTH = VIEW_WIDTH - PADDING.left - PADDING.right;
 const INNER_HEIGHT = VIEW_HEIGHT - PADDING.top - PADDING.bottom;
 
 export default function TimelineChart({ years, onSelectYear }: TimelineChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const clipIdBase = useId();
+  const aboveZeroClipId = `${clipIdBase}-above`;
+  const belowZeroClipId = `${clipIdBase}-below`;
 
   const n = years.length;
-  const maxValue = useMemo(
-    () => Math.max(0, ...years.map((y) => y.totalForYear)),
-    [years],
-  );
-  const ticks = useMemo(() => niceTicks(maxValue), [maxValue]);
-  const yMax = ticks[ticks.length - 1] || 1;
+  // Domain always includes 0 — that's the solvent/depleted baseline, so it
+  // should always be visible even if balance never dips negative.
+  const minValue = useMemo(() => Math.min(0, ...years.map((y) => y.balance)), [years]);
+  const maxValue = useMemo(() => Math.max(0, ...years.map((y) => y.balance)), [years]);
+  const ticks = useMemo(() => niceTicks(minValue, maxValue), [minValue, maxValue]);
+  const yLo = ticks[0] ?? 0;
+  const yHi = ticks[ticks.length - 1] ?? 1;
+  const ySpan = yHi - yLo || 1;
 
   const xAt = (i: number) =>
     n <= 1 ? PADDING.left : PADDING.left + (i / (n - 1)) * INNER_WIDTH;
   const yAt = (value: number) =>
-    PADDING.top + INNER_HEIGHT - (value / yMax) * INNER_HEIGHT;
+    PADDING.top + INNER_HEIGHT - ((value - yLo) / ySpan) * INNER_HEIGHT;
+  const zeroY = yAt(0);
 
   const linePath = years
-    .map((y, i) => `${i === 0 ? "M" : "L"}${xAt(i)},${yAt(y.totalForYear)}`)
+    .map((y, i) => `${i === 0 ? "M" : "L"}${xAt(i)},${yAt(y.balance)}`)
     .join(" ");
-  const areaPath = `${linePath} L${xAt(n - 1)},${yAt(0)} L${xAt(0)},${yAt(0)} Z`;
+  const areaPath = `${linePath} L${xAt(n - 1)},${zeroY} L${xAt(0)},${zeroY} Z`;
 
   // Sparse x-axis labels: first, last, and every ~10 years in between so 75
   // points don't collide into an unreadable smear.
@@ -86,12 +92,17 @@ export default function TimelineChart({ years, onSelectYear }: TimelineChartProp
   }
 
   const hovered = hoverIndex !== null ? years[hoverIndex] : null;
+  const hoveredIsNegative = hovered !== null && hovered.balance < 0;
+  const hoveredColor = hoveredIsNegative ? "var(--color-danger)" : "var(--color-success)";
 
-  // Clamp tooltip so it never renders past the chart's right edge.
-  const tooltipWidth = 148;
+  // Clamp the tooltip so it never renders past the chart's edges, and flip
+  // below the point when there isn't room above it.
+  const tooltipWidth = 168;
   const tooltipX = hovered
     ? Math.min(xAt(hoverIndex!) + 12, VIEW_WIDTH - tooltipWidth - 4)
     : 0;
+  const pointY = hovered ? yAt(hovered.balance) : 0;
+  const tooltipBelow = pointY < PADDING.top + 44;
 
   return (
     <div className="relative rounded-lg border border-border bg-card p-3 shadow-sm">
@@ -100,13 +111,32 @@ export default function TimelineChart({ years, onSelectYear }: TimelineChartProp
         viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
         className="w-full cursor-pointer touch-none"
         role="img"
-        aria-label="Yearly total money needed, this year through age 100. Use arrow keys to move between years, Enter to view a year's breakdown."
+        aria-label="Projected savings balance, this year through age 100. Use arrow keys to move between years, Enter to view a year's breakdown."
         tabIndex={0}
         onPointerMove={handlePointerMove}
         onPointerLeave={() => setHoverIndex(null)}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
       >
+        <defs>
+          <clipPath id={aboveZeroClipId}>
+            <rect
+              x={PADDING.left}
+              y={PADDING.top}
+              width={INNER_WIDTH}
+              height={Math.max(0, zeroY - PADDING.top)}
+            />
+          </clipPath>
+          <clipPath id={belowZeroClipId}>
+            <rect
+              x={PADDING.left}
+              y={zeroY}
+              width={INNER_WIDTH}
+              height={Math.max(0, VIEW_HEIGHT - PADDING.bottom - zeroY)}
+            />
+          </clipPath>
+        </defs>
+
         {/* Gridlines + y-axis labels */}
         {ticks.map((t) => (
           <g key={t}>
@@ -145,15 +175,48 @@ export default function TimelineChart({ years, onSelectYear }: TimelineChartProp
           ) : null,
         )}
 
-        {/* Area wash + line */}
-        <path d={areaPath} fill="var(--color-primary)" fillOpacity={0.1} stroke="none" />
+        {/* Zero baseline — the solvent/depleted line the whole chart is read against */}
+        <line
+          x1={PADDING.left}
+          x2={VIEW_WIDTH - PADDING.right}
+          y1={zeroY}
+          y2={zeroY}
+          stroke="var(--color-muted-foreground)"
+          strokeWidth={1.25}
+        />
+
+        {/* Area wash + line, split at zero: success above, danger below */}
+        <path
+          d={areaPath}
+          fill="var(--color-success)"
+          fillOpacity={0.12}
+          stroke="none"
+          clipPath={`url(#${aboveZeroClipId})`}
+        />
+        <path
+          d={areaPath}
+          fill="var(--color-danger)"
+          fillOpacity={0.12}
+          stroke="none"
+          clipPath={`url(#${belowZeroClipId})`}
+        />
         <path
           d={linePath}
           fill="none"
-          stroke="var(--color-primary)"
+          stroke="var(--color-success)"
           strokeWidth={2}
           strokeLinejoin="round"
           strokeLinecap="round"
+          clipPath={`url(#${aboveZeroClipId})`}
+        />
+        <path
+          d={linePath}
+          fill="none"
+          stroke="var(--color-danger)"
+          strokeWidth={2}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          clipPath={`url(#${belowZeroClipId})`}
         />
 
         {/* Crosshair + hovered point */}
@@ -170,9 +233,9 @@ export default function TimelineChart({ years, onSelectYear }: TimelineChartProp
             />
             <circle
               cx={xAt(hoverIndex)}
-              cy={yAt(hovered.totalForYear)}
+              cy={pointY}
               r={5}
-              fill="var(--color-primary)"
+              fill={hoveredColor}
               stroke="var(--color-card)"
               strokeWidth={2}
             />
@@ -186,16 +249,19 @@ export default function TimelineChart({ years, onSelectYear }: TimelineChartProp
           className="pointer-events-none absolute rounded-lg border border-border bg-card px-3 py-2 shadow-lg"
           style={{
             left: `${(tooltipX / VIEW_WIDTH) * 100}%`,
-            top: `${(yAt(hovered.totalForYear) / VIEW_HEIGHT) * 100}%`,
+            top: `${(pointY / VIEW_HEIGHT) * 100}%`,
             width: tooltipWidth,
-            transform: "translateY(-110%)",
+            transform: tooltipBelow ? "translateY(10%)" : "translateY(-110%)",
           }}
         >
           <p className="text-xs text-muted-foreground">
             {hovered.year} · age {hovered.age}
           </p>
-          <p className="text-base font-semibold text-card-foreground">
-            {formatCurrency(hovered.totalForYear)}
+          <p className="text-base font-semibold" style={{ color: hoveredColor }}>
+            {formatCurrency(hovered.balance)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Money needed: {formatCurrency(hovered.totalForYear)}
           </p>
         </div>
       )}
