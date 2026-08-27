@@ -125,7 +125,7 @@ status.*
 - **Data persistence** — save everything locally (and/or export/import) so
   data isn't lost between sessions.
 
-## Data model (draft, subject to change)
+## Data model (as built — see src/lib/types.ts and calculations.ts for source of truth)
 
 ```
 Category
@@ -136,19 +136,36 @@ Category
 - growthRatePerYear (optional %, default 0)
 - notes / source (e.g. "based on 2026 city average")
 
-YearPlan (derived + overrides)
-- year
-- categoryAmounts[] (calculated from Category, or overridden manually for that year)
-- customEvents[] (see below)
-- totalForYear (calculated)
-
 CustomEvent
 - id
 - title
-- year (or startYear + endYear for recurring)
-- amount (one-time or per-year)
+- startYear (+ optional endYear for recurring)
+- amount (one-time total, or per-year if recurring; can be negative — an inflow)
 - recurring (boolean)
 - notes
+
+IncomeSource
+- id
+- name
+- rateUnit (monthly | hourly)
+- amount (RM/month or RM/hour)
+- hoursPerWeek (only used when hourly, to derive a monthly equivalent)
+- notes
+
+UserProfile
+- birthYear
+- currency (MYR)
+- currentSavings (starting balance for the projection)
+
+YearPlan (derived, one per year, this year -> age 100)
+- year, age
+- categoryAmounts[], categoryTotal
+- eventAmounts[], eventTotal
+- totalForYear (categoryTotal + eventTotal — money needed that year)
+- incomeForYear (flat: current monthly income x 12 — income has no growth/
+  start/end concept yet, this is a known simplification)
+- netForYear (incomeForYear - totalForYear)
+- balance (running end-of-year balance, starting from currentSavings)
 ```
 
 ---
