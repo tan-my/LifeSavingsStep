@@ -69,7 +69,7 @@ status.*
 - [x] 1c. Connect Vercel deploy
 - [x] 2. Data model (categories, custom events, first-run birth year/age) + localStorage persistence + export/import
 - [x] 3. Yearly timeline view + year-detail drill-down
-- [ ] 4. Category management UI
+- [x] 4. Category management UI
 - [ ] 5. Custom life-event UI
 - [ ] 6. Fill in real category data and life events
 
