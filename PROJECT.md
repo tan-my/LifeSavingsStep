@@ -67,7 +67,7 @@ status.*
 - [x] 1a. Scaffold Next.js + TypeScript project (local git initialized, Clean Executive Enterprise design system applied)
 - [x] 1b. Create GitHub repo, push
 - [x] 1c. Connect Vercel deploy
-- [ ] 2. Data model (categories, custom events, first-run birth year/age) + localStorage persistence + export/import
+- [x] 2. Data model (categories, custom events, first-run birth year/age) + localStorage persistence + export/import
 - [ ] 3. Yearly timeline view + year-detail drill-down
 - [ ] 4. Category management UI
 - [ ] 5. Custom life-event UI
