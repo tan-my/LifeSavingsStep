@@ -150,7 +150,8 @@ IncomeSource
 - rateUnit (monthly | hourly)
 - amount (RM/month or RM/hour)
 - hoursPerWeek (only used when hourly, to derive a monthly equivalent)
-- startYear (+ optional endYear — omitted = ongoing; a job/contract's period)
+- startYear + startMonth (+ optional endYear/endMonth — omitted = ongoing;
+  a job/contract's period, prorated by month if it doesn't span a full year)
 - notes
 
 UserProfile
