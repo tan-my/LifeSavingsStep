@@ -67,6 +67,12 @@ export default function Home() {
           >
             Categories
           </Link>
+          <Link
+            href="/events"
+            className="cursor-pointer rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-card-foreground transition-colors hover:bg-muted"
+          >
+            Life events
+          </Link>
           <button
             onClick={() => exportStateToFile(state)}
             className="cursor-pointer rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-card-foreground transition-colors hover:bg-muted"
