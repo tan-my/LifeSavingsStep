@@ -150,6 +150,7 @@ IncomeSource
 - rateUnit (monthly | hourly)
 - amount (RM/month or RM/hour)
 - hoursPerWeek (only used when hourly, to derive a monthly equivalent)
+- startYear (+ optional endYear — omitted = ongoing; a job/contract's period)
 - notes
 
 UserProfile
@@ -162,8 +163,8 @@ YearPlan (derived, one per year, this year -> age 100)
 - categoryAmounts[], categoryTotal
 - eventAmounts[], eventTotal
 - totalForYear (categoryTotal + eventTotal — money needed that year)
-- incomeForYear (flat: current monthly income x 12 — income has no growth/
-  start/end concept yet, this is a known simplification)
+- incomeForYear (sum of active income sources' monthly rate x 12 for that
+  year, per each source's startYear/endYear — no raise/growth modeled yet)
 - netForYear (incomeForYear - totalForYear)
 - balance (running end-of-year balance, starting from currentSavings)
 ```

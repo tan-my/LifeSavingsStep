@@ -148,10 +148,10 @@ export default function Home() {
             <summary className="cursor-pointer select-none">About this data</summary>
             <p className="mt-1">
               Category amounts are placeholders — real data comes with the
-              category management UI (see PROJECT.md, step 4). Income is
-              assumed flat every year (no growth modeled yet), and the
-              balance projection is a straight-line estimate, not a
-              guarantee.
+              category management UI (see PROJECT.md, step 4). Each income
+              source applies only within its own start/end period, at a
+              flat rate (no raises/growth modeled yet). The balance
+              projection is a straight-line estimate, not a guarantee.
             </p>
           </details>
         </div>
