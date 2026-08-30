@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAppState } from "@/hooks/useAppState";
 import EventFormModal from "@/components/EventFormModal";
+import EventPresetPicker from "@/components/EventPresetPicker";
 import type { CustomEvent } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
 
@@ -22,6 +23,7 @@ function describeSpan(event: CustomEvent): string {
 export default function EventsPage() {
   const { state, setState, isLoaded } = useAppState();
   const [editing, setEditing] = useState<CustomEvent | "new" | null>(null);
+  const [browsingPresets, setBrowsingPresets] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   if (!isLoaded || !state) {
@@ -50,6 +52,12 @@ export default function EventsPage() {
       : [...state.events, event];
     setState({ ...state, events });
     setEditing(null);
+  }
+
+  function handleAddPresets(added: CustomEvent[]) {
+    if (!state) return;
+    setState({ ...state, events: [...state.events, ...added] });
+    setBrowsingPresets(false);
   }
 
   function handleDelete(id: string) {
@@ -91,24 +99,43 @@ export default function EventsPage() {
             <p className="text-xs text-muted-foreground">{state.events.length} total</p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            setConfirmDeleteId(null);
-            setEditing("new");
-          }}
-          className="cursor-pointer rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary transition-opacity hover:opacity-90"
-        >
-          + Add event
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setConfirmDeleteId(null);
+              setBrowsingPresets(true);
+            }}
+            className="cursor-pointer rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-card-foreground transition-colors hover:bg-muted"
+          >
+            Browse common events
+          </button>
+          <button
+            onClick={() => {
+              setConfirmDeleteId(null);
+              setEditing("new");
+            }}
+            className="cursor-pointer rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary transition-opacity hover:opacity-90"
+          >
+            + Add event
+          </button>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
         <div className="mx-auto max-w-2xl space-y-3">
           {state.events.length === 0 && (
-            <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-              No life events yet. Add a wedding, a new baby, buying a house — anything
-              that shifts the numbers on top of your category baseline.
-            </p>
+            <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                No life events yet. Add a wedding, a new baby, buying a house — anything
+                that shifts the numbers on top of your category baseline.
+              </p>
+              <button
+                onClick={() => setBrowsingPresets(true)}
+                className="mt-3 cursor-pointer text-sm font-medium text-primary underline"
+              >
+                Browse common events with average prices
+              </button>
+            </div>
           )}
 
           {groups.map(
@@ -181,6 +208,15 @@ export default function EventsPage() {
           )}
         </div>
       </div>
+
+      {browsingPresets && (
+        <EventPresetPicker
+          currentYear={CURRENT_YEAR}
+          existingTitles={state.events.map((e) => e.title)}
+          onAdd={handleAddPresets}
+          onClose={() => setBrowsingPresets(false)}
+        />
+      )}
 
       {showForm && (
         <EventFormModal
