@@ -46,6 +46,12 @@ export default function IncomeFormModal({
   const [endMonthValue, setEndMonthValue] = useState(
     source?.endYear !== undefined ? toMonthValue(source.endYear, source.endMonth ?? 12) : "",
   );
+  const [growthRate, setGrowthRate] = useState(String(source?.growthRatePerYear ?? 0));
+  // New salaried sources default to EPF-eligible, which is the common case;
+  // hourly/freelance work usually isn't, so it defaults off there.
+  const [epfApplies, setEpfApplies] = useState(
+    source?.epfApplies ?? (source === undefined ? true : false),
+  );
   const [notes, setNotes] = useState(source?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
 
@@ -95,11 +101,19 @@ export default function IncomeFormModal({
       }
     }
 
+    const growth = Number(growthRate === "" ? 0 : growthRate);
+    if (!Number.isFinite(growth)) {
+      setError("Yearly raise must be a number.");
+      return;
+    }
+
     onSave({
       id: source?.id ?? crypto.randomUUID(),
       name: name.trim(),
       rateUnit,
       amount: amt,
+      growthRatePerYear: growth,
+      epfApplies,
       hoursPerWeek: rateUnit === "hourly" ? hours : undefined,
       startYear: start.year,
       startMonth: start.month,
@@ -238,6 +252,42 @@ export default function IncomeFormModal({
           contract can be a few months, not a whole year. Leave
           &quot;Ends&quot; blank if it&apos;s ongoing.
         </p>
+
+        <label className={`mt-4 block ${labelClass}`} htmlFor="inc-growth">
+          Yearly raise (%)
+        </label>
+        <input
+          id="inc-growth"
+          className={inputClass}
+          type="number"
+          step="0.1"
+          inputMode="decimal"
+          value={growthRate}
+          onChange={(e) => setGrowthRate(e.target.value)}
+          placeholder="0"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Compounds from this source&apos;s start year. Leave at 0 to hold the
+          rate flat for the whole timeline.
+        </p>
+
+        <label className="mt-4 flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={epfApplies}
+            onChange={(e) => setEpfApplies(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 cursor-pointer accent-primary"
+          />
+          <span>
+            <span className={labelClass}>EPF contributions apply</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              For salaried employment. The employee share comes out of this
+              income and the employer share is added on top — both go into the
+              EPF pot, which stays locked until the access age. Turn this off
+              for freelance work, rental or dividends.
+            </span>
+          </span>
+        </label>
 
         <label className={`mt-4 block ${labelClass}`} htmlFor="inc-notes">
           Notes (optional)

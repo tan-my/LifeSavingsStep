@@ -85,6 +85,67 @@ export default function YearDetailModal({ year, onClose }: YearDetailModalProps)
           </div>
         </div>
 
+        {(year.incomeAmounts.length > 0 || year.epfBalance > 0) && (
+          <div className="mt-6">
+            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Income
+            </h3>
+            <ul className="mt-2 space-y-1.5">
+              {year.incomeAmounts.map((i) => (
+                <li key={i.sourceId} className="flex items-center justify-between text-sm">
+                  <span className="min-w-0 truncate text-card-foreground">
+                    {i.name}
+                    {i.gross !== i.spendable && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {formatCurrency(i.gross)} gross
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-medium text-card-foreground">
+                    {formatCurrency(i.spendable)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            {(year.epfContributionForYear > 0 || year.epfBalance > 0 || year.epfReleased > 0) && (
+              <div className="mt-3 space-y-1.5 border-t border-border pt-3 text-sm">
+                {year.epfContributionForYear > 0 && (
+                  <p className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Into EPF this year</span>
+                    <span className="font-medium text-muted-foreground">
+                      {formatCurrency(year.epfContributionForYear)}
+                    </span>
+                  </p>
+                )}
+                {year.epfReleased > 0 ? (
+                  <p className="flex items-center justify-between">
+                    <span className="text-success">EPF released to savings</span>
+                    <span className="font-medium text-success">
+                      {formatCurrency(year.epfReleased)}
+                    </span>
+                  </p>
+                ) : (
+                  year.epfBalance > 0 && (
+                    <p className="flex items-center justify-between">
+                      <span className="text-muted-foreground">EPF pot (locked)</span>
+                      <span className="font-medium text-muted-foreground">
+                        {formatCurrency(year.epfBalance)}
+                      </span>
+                    </p>
+                  )
+                )}
+                <p className="flex items-center justify-between border-t border-border pt-1.5">
+                  <span className="text-card-foreground">Total net worth</span>
+                  <span className="font-medium text-card-foreground">
+                    {formatCurrency(year.totalNetWorth)}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {groups.length > 0 && (
           <div className="mt-6">
             <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">

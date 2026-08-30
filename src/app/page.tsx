@@ -6,11 +6,17 @@ import { useAppState } from "@/hooks/useAppState";
 import FirstRunSetup from "@/components/FirstRunSetup";
 import TimelineChart from "@/components/TimelineChart";
 import YearDetailModal from "@/components/YearDetailModal";
-import SavingsFormModal from "@/components/SavingsFormModal";
+import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import StatTile from "@/components/StatTile";
-import { computeTimeline, findRunwayEndYear, totalMonthlyIncome } from "@/lib/calculations";
+import {
+  computeTimeline,
+  findEpfReleaseYear,
+  findRunwayEndYear,
+  totalMonthlyIncome,
+} from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
 import { exportStateToFile, importStateFromFile, ImportError } from "@/lib/exportImport";
+import type { UserProfile } from "@/lib/types";
 
 const CURRENT_YEAR = new Date().getFullYear();
 const CURRENT_MONTH = new Date().getMonth() + 1;
@@ -19,7 +25,7 @@ export default function Home() {
   const { state, setState, isLoaded } = useAppState();
   const [importError, setImportError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [editingSavings, setEditingSavings] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isLoaded || !state) {
@@ -42,6 +48,8 @@ export default function Home() {
   const peakYear = timeline.reduce((a, b) => (b.totalForYear > a.totalForYear ? b : a));
   const monthlyIncome = totalMonthlyIncome(state, CURRENT_YEAR, CURRENT_MONTH);
   const runwayYear = findRunwayEndYear(timeline);
+  const epfReleaseYear = findEpfReleaseYear(timeline);
+  const showEpf = profile.epf.enabled && (profile.currentEpfBalance > 0 || epfReleaseYear !== null);
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -56,10 +64,10 @@ export default function Home() {
     }
   }
 
-  function handleSaveSavings(currentSavings: number) {
+  function handleSaveProfile(next: UserProfile) {
     if (!state) return;
-    setState({ ...state, profile: { ...profile, currentSavings } });
-    setEditingSavings(false);
+    setState({ ...state, profile: next });
+    setEditingProfile(false);
   }
 
   return (
@@ -117,20 +125,50 @@ export default function Home() {
       )}
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-2 border-b border-border px-4 py-2.5 sm:grid-cols-4 sm:px-6 lg:grid-cols-7">
+      <div
+        className={`grid grid-cols-2 gap-2 border-b border-border px-4 py-2.5 sm:grid-cols-4 sm:px-6 ${
+          showEpf ? "lg:grid-cols-5" : "lg:grid-cols-7"
+        }`}
+      >
         <StatTile
           label="Current savings"
           value={formatCurrency(profile.currentSavings)}
+          sublabel="spendable · edit"
           tone={profile.currentSavings < 0 ? "danger" : "default"}
-          onClick={() => setEditingSavings(true)}
+          onClick={() => setEditingProfile(true)}
         />
+        {showEpf && (
+          <>
+            <StatTile
+              label="EPF now"
+              value={formatCurrency(profile.currentEpfBalance)}
+              sublabel={
+                epfReleaseYear
+                  ? `unlocks ${epfReleaseYear.year}`
+                  : `locked to ${profile.epf.accessAge}`
+              }
+              onClick={() => setEditingProfile(true)}
+            />
+            <StatTile
+              label="EPF at unlock"
+              value={
+                epfReleaseYear ? formatCurrency(epfReleaseYear.epfReleased) : "—"
+              }
+              sublabel={epfReleaseYear ? `age ${epfReleaseYear.age}` : "already past"}
+            />
+          </>
+        )}
         <StatTile
           label="Runway"
           value={runwayYear ? `${runwayYear.year}` : "Never depletes"}
           sublabel={runwayYear ? `age ${runwayYear.age}` : `through age ${lastYear.age}`}
           tone={runwayYear ? "danger" : "success"}
         />
-        <StatTile label="Monthly income" value={formatCurrency(monthlyIncome)} />
+        <StatTile
+          label="Monthly income"
+          value={formatCurrency(monthlyIncome)}
+          sublabel={profile.incomeBasis === "gross" ? "take-home" : "as entered"}
+        />
         <StatTile label="This year" value={formatCurrency(thisYear.totalForYear)} />
         <StatTile
           label="Peak year"
@@ -148,11 +186,14 @@ export default function Home() {
           <details className="mt-1.5 text-xs text-muted-foreground">
             <summary className="cursor-pointer select-none">About this data</summary>
             <p className="mt-1">
-              Category amounts are placeholders — real data comes with the
-              category management UI (see PROJECT.md, step 4). Each income
-              source applies only within its own start/end period, at a
-              flat rate (no raises/growth modeled yet). The balance
-              projection is a straight-line estimate, not a guarantee.
+              Seeded categories start at RM0 — every number here is one you
+              entered, or a preset estimate you accepted (see PROJECT.md,
+              &ldquo;Numbers to fill in&rdquo;). Income applies only within each
+              source&rsquo;s own period and grows by its own yearly raise.
+              Balance is spendable money only: EPF sits in a separate pot that
+              compounds at the dividend rate and is released at the access age.
+              Spendable savings themselves earn no return. Every figure is a
+              straight-line projection from your assumptions, not a guarantee.
             </p>
           </details>
         </div>
@@ -167,6 +208,7 @@ export default function Home() {
                   <th className="px-4 py-2 text-right">Income</th>
                   <th className="px-4 py-2 text-right">Needed</th>
                   <th className="px-4 py-2 text-right">Balance</th>
+                  {showEpf && <th className="px-4 py-2 text-right">EPF</th>}
                 </tr>
               </thead>
               <tbody>
@@ -214,6 +256,18 @@ export default function Home() {
                         {formatCurrency(y.balance)}
                       </button>
                     </td>
+                    {showEpf && (
+                      <td className="p-0">
+                        <button
+                          onClick={() => setSelectedYear(y.year)}
+                          className="w-full cursor-pointer px-4 py-1.5 text-right tabular-nums text-muted-foreground transition-colors hover:bg-muted"
+                        >
+                          {y.epfReleased > 0
+                            ? `released ${formatCurrency(y.epfReleased)}`
+                            : formatCurrency(y.epfBalance)}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -225,11 +279,11 @@ export default function Home() {
       {selectedYearPlan && (
         <YearDetailModal year={selectedYearPlan} onClose={() => setSelectedYear(null)} />
       )}
-      {editingSavings && (
-        <SavingsFormModal
-          currentSavings={profile.currentSavings}
-          onSave={handleSaveSavings}
-          onClose={() => setEditingSavings(false)}
+      {editingProfile && (
+        <ProfileSettingsModal
+          profile={profile}
+          onSave={handleSaveProfile}
+          onClose={() => setEditingProfile(false)}
         />
       )}
     </div>

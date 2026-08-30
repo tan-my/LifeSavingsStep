@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { AppState } from "@/lib/types";
+import { DEFAULT_EPF_SETTINGS, type AppState } from "@/lib/types";
 
 interface FirstRunSetupProps {
   onComplete: (state: AppState) => void;
@@ -61,6 +61,12 @@ export default function FirstRunSetup({ onComplete, baseState }: FirstRunSetupPr
         currency: "MYR",
         createdAt: new Date().toISOString(),
         currentSavings,
+        // The remaining projection settings all have workable defaults and are
+        // editable from the dashboard, so first run stays a two-field screen.
+        currentEpfBalance: 0,
+        incomeBasis: "gross",
+        otherDeductionRate: 0,
+        epf: { ...DEFAULT_EPF_SETTINGS },
       },
     });
   }
